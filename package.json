@@ -1,0 +1,14 @@
+{
+  "name": "inferstat",
+  "version": "3.0.0",
+  "description": "InferStat — Evaluador de Inferencia Visual (OVA de estadística: barras de error y reglas de Cumming)",
+  "type": "module",
+  "license": "MIT",
+  "author": "Rolando Gelabert Fernández",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "@google/genai": "^0.4.0"
+  }
+}

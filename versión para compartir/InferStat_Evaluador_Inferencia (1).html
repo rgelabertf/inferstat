@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="author" content="Rolando Gelabert Fernández — Universidad Autónoma del Carmen">
+  <meta name="license" content="MIT">
+  <title>InferStat - Evaluador de Inferencia Visual</title>
+  <!-- Tailwind CSS v3 Play CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            zinc: { 850: '#202024', 450: '#9CA3AF' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+    /* Hide scrollbars but keep functionality */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    .dark ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb { background: #e4e4e7; border-radius: 4px; }
+
+    /* Chat IA Styles */
+    #chat-messages { scroll-behavior: smooth; }
+    #chat-messages::-webkit-scrollbar { width: 4px; }
+    .chat-bubble-user { background: #2563eb; color: white; border-radius: 16px 16px 4px 16px; max-width: 82%; }
+    .dark .chat-bubble-user { background: #1d4ed8; }
+    .chat-bubble-model { background: white; color: #27272a; border: 1px solid #e4e4e7; border-radius: 16px 16px 16px 4px; max-width: 82%; }
+    .dark .chat-bubble-model { background: #161B22; color: #e4e4e7; border-color: #30363D; }
+    @keyframes chat-fade-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .chat-fade-in { animation: chat-fade-in 0.25s ease-out; }
+
+    /* Número inputs compactos */
+    .stat-input { @apply w-full bg-zinc-50 dark:bg-[#0D1117] border border-zinc-200 dark:border-[#30363D] rounded-lg px-2 py-1.5 text-center text-xs font-mono font-semibold text-zinc-850 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 transition; }
+
+    /* Charts */
+    .chart-box { position: relative; height: 380px; }
+    @media (min-width: 768px) { .chart-box { height: 440px; } }
+
+    /* Switch */
+    .switch { position: relative; display: inline-block; width: 34px; height: 20px; flex-shrink: 0; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; inset: 0; background: #d4d4d8; border-radius: 20px; transition: .3s; }
+    .dark .slider { background: #3f3f46; }
+    .slider:before { content: ""; position: absolute; height: 14px; width: 14px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: .3s; }
+    .switch input:checked + .slider { background: #2563eb; }
+    .switch input:checked + .slider:before { transform: translateX(14px); }
+
+    .chip { @apply px-3 py-1.5 rounded-full text-xs font-semibold border border-zinc-200 dark:border-[#30363D] bg-white dark:bg-[#21262D] text-zinc-700 dark:text-gray-300 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer; }
+  </style>
+</head>
+<body class="bg-zinc-50 text-zinc-900 dark:bg-[#0F1115] dark:text-zinc-50 min-h-screen transition-colors duration-200">
+
+  <header class="border-b border-zinc-200 dark:border-[#2D333D] bg-white/80 dark:bg-[#161B22]/80 backdrop-blur sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="bg-blue-600 text-white p-2 rounded-xl shadow-md shadow-blue-600/10">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75c0 .621-.504 1.125-1.125 1.125h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-base font-bold text-zinc-900 dark:text-white tracking-tight">InferStat</h1>
+          <p class="text-[10px] text-zinc-500 dark:text-gray-450 font-medium">Evaluador de Inferencia Visual Autónomo</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <div class="bg-zinc-100 dark:bg-[#21262D] p-0.5 rounded-lg flex items-center text-xs">
+          <button id="tab-analisis-btn" onclick="switchTab('analisis')" class="px-3.5 py-1.5 rounded-md font-semibold bg-white dark:bg-[#30363D] text-zinc-900 dark:text-white shadow-sm transition cursor-pointer">Análisis</button>
+          <button id="tab-manual-btn" onclick="switchTab('manual')" class="px-3.5 py-1.5 rounded-md font-semibold text-zinc-500 dark:text-gray-400 hover:text-zinc-900 dark:hover:text-white transition cursor-pointer">Manual de Uso</button>
+          <button id="tab-chat-btn" onclick="switchTab('chat')" class="px-3.5 py-1.5 rounded-md font-semibold text-zinc-500 dark:text-gray-400 hover:text-zinc-900 dark:hover:text-white transition cursor-pointer">Chat IA</button>
+        </div>
+        <button onclick="toggleDarkMode()" class="p-2 text-zinc-500 dark:text-gray-400 hover:bg-zinc-100 dark:hover:bg-[#21262D] rounded-lg transition" title="Cambiar Tema">
+          <svg id="sun-icon" class="w-4 h-4 hidden dark:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m0 13.5V21m8.96-8.96h-2.25M4.14 12H1.89m17.15-6.96-1.59 1.59M6.92 17.08l-1.59 1.59m12.75 0-1.59-1.59M6.92 6.92 5.33 5.33M12 7.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Z" /></svg>
+          <svg id="moon-icon" class="w-4 h-4 dark:hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" /></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- ============ TAB ANALISIS ============ -->
+    <div id="tab-analisis" class="space-y-6">
+
+      <!-- Encabezado + Toggle de modo -->
+      <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-white dark:bg-[#161B22] border border-zinc-200 dark:border-[#30363D] p-6 rounded-2xl shadow-sm">
+        <div>
+          <h2 class="text-xl font-bold text-zinc-950 dark:text-white">Laboratorio de Inferencia Visual</h2>
+          <p class="text-xs text-zinc-500 dark:text-gray-400 mt-1">Ajusta media, desviación estándar y tamaño de muestra; observa el solapamiento de los intervalos y decide si hay diferencia significativa.</p>
+        </div>
+        <div class="flex items-center gap-2 bg-zinc-100 dark:bg-[#21262D] p-1 rounded-lg text-xs font-semibold">
+          <button id="mode-libre-btn" onclick="setMode('libre')" class="px-3.5 py-1.5 rounded-md bg-white dark:bg-[#30363D] text-zinc-900 dark:text-white shadow-sm transition cursor-pointer">Modo Libre</button>
+          <button id="mode-desafio-btn" onclick="setMode('desafio')" class="px-3.5 py-1.5 rounded-md text-zinc-500 dark:text-gray-400 hover:text-zinc-900 dark:hover:text-white transition cursor-pointer">Modo Desafío</button>
+        </div>
+      </div>
+
+      <!-- ===== MODO LIBRE ===== -->
+      <div id="view-libre" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Columna de controles -->
+        <div class="space-y-4">
+          <div class="bg-white dark:bg-[#161B22] border border-zinc-200 dark:border-[#30363D] rounded-xl p-5 shadow-sm space-y-4">
+            <h3 class="text-sm font-bold text-zinc-900 dark:text-white">Configuración</h3>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[10px] font-semibold text-zinc-500 dark:text-gray-400 mb-1">Número de grupos</label>
+                <input type="number" id="num-groups" value="3" min="2" max="5" onchange="generateInputs()" class="stat-input">
+              </div>
+              <div>
+                <label class="block text-[10px] font-semibold text-zinc-500 dark:text-gray-400 mb-1">Tipo de barras</label>
+                <select id="error-type" onchange="updateChart()" class="w-full bg-zinc-50 dark:bg-[#0D1117] border border-zinc-200 dark:border-[#30363D] rounded-lg px-2 py-1.5 text-xs font-semibold text-zinc-850 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 transition">
+                  <option value="se">Error Estándar (SE)</option>
+                  <option value="ci" selected>Intervalo de Confianza (95% CI)</option>
+                  <option value="sd">Desviación Estándar (SD)</option>
+                  <option value="both">Ambos (SE + IC)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between pt-1">
+              <div class="flex items-center gap-2">
+                <label class="switch">
+                  <input type="checkbox" id="show-letters" onchange="updateChart()">
+                  <span class="slider"></span>
+                </label>
+                <span class="text-xs font-medium text-zinc-700 dark:text-gray-300">Letras de agrupación (CLD)</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <label class="switch">
+                  <input type="checkbox" id="check-homoscedasticity" onchange="updateChart()">
+                  <span class="slider"></span>
+                </label>
+                <span class="text-xs font-medium text-zinc-700 dark:text-gray-300">Chequear varianzas</span>
+              </div>
+            </div>
+
+            <div class="pt-1 flex items-center gap-2">
+              <button onclick="exportJSON()" class="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-white dark:bg-[#21262D] border border-zinc-200 dark:border-[#30363D] text-zinc-700 dark:text-gray-300 hover:border-blue-500 transition">💾 Exportar</button>
+              <button onclick="document.getElementById('import-file').click()" class="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-white dark:bg-[#21262D] border border-zinc-200 dark:border-[#30363D] text-zinc-700 dark:text-gray-300 hover:border-blue-500 transition">📂 Importar</button>
+              <input type="file" id="import-file" style="display:none;" onchange="importJSON(event)">
+            </div>
+
+            <div class="border-t border-zinc-200 dark:border-[#30363D] pt-3">
+              <p class="text-[10px] font-semibold text-zinc-500 dark:text-gray-400 mb-2">Escenarios de demostración</p>
+              <div class="flex flex-wrap gap-1.5">
+                <button class="chip" onclick="loadPreset('clara')">Diferencia clara</button>
+                <button class="chip" onclick="loadPreset('ninguna')">Sin diferencia</button>
+                <button class="chip" onclick="loadPreset('marginal')">Solapamiento ligero</button>
+                <button class="chip" onclick="loadPreset('transitiva')">Paradoja transitiva</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tarjetas de grupos -->
+          <div id="groups-inputs-container" class="space-y-3"></div>
+        </div>
+
+        <!-- Columna de visualización -->
+        <div class="lg:col-span-2 space-y-4">
+          <div class="bg-white dark:bg-[#161B22] border border-zinc-200 dark:border-[#30363D] rounded-xl p-5 shadow-sm">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-sm font-bold text-zinc-900 dark:text-white">Solapamiento de Intervalos</h3>
+              <div id="chart-legend" class="flex items-center gap-3 text-[10px] font-medium text-zinc-500 dark:text-gray-400"></div>
+            </div>
+            <div class="chart-box">
+              <canvas id="mainChart"></canvas>
+            </div>
+          </div>
+
+          <div class="bg-white dark:bg-[#161B22] border border-zinc-200 dark:border-[#30363D] rounded-xl p-5 shadow-sm">
+            <h3 class="text-sm font-bold text-zinc-900 dark:text-white mb-3">💡 Asistente Pedagógico</h3>
+            <div id="small-n-warning" class="hidden mb-3 text-[11px] px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20">⚠️ <strong>Muestra pequeña (n ≤ 3):</strong> las barras de SE e IC son altamente inestables en muestras tan reducidas.</div>
+            <div id="interpretation" class="space-y-2 text-xs text-zinc-700 dark:text-gray-300"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== MODO DESAFÍO ===== -->
+      <div id="view-desafio" class="hidden">
+        <div class="bg-white dark:bg-[#161B22] border border-zinc-200 dark:border-[#30363D] rounded-xl p-6 shadow-sm">
+          <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+            <div>
+              <h3 class="text-lg font-bold text-zinc-900 dark:text-white">⚡ Desafío de Inferencia</h3>
+              <p class="text-xs text-zinc-500 dark:text-gray-400 mt-1">Observa las barras de error al 95% y decide si los grupos difieren significativamente (según las reglas de Cumming).</p>
+            </div>
+            <div class="flex items-center gap-3">
+              <label class="flex items-center gap-2 text-[11px] font-medium text-zinc-600 dark:text-gray-300">
+                <input type="checkbox" id="chk-challenge-homo" onchange="generateChallengeData()" class="accent-blue-600">
+                Incluir chequeo de varianzas
+              </label>
+              <button onclick="generateChallengeData()" class="px-3.5 py-2 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition shadow-sm">🎲 Nuevo reto</button>
+            </div>
+          </div>
+
+          <div id="challenge-homo-result" class="mt-3"></div>
+
+          <div class="mt-4 rounded-xl border border-zinc-200 dark:border-[#30363D] overflow-hidden">
+            <div class="chart-box">
+              <canvas id="challengeChart"></canvas>
+            </div>
+          </div>
+
+          <div class="mt-5 text-center">
+            <h4 id="challenge-question" class="text-base font-bold text-zinc-900 dark:text-white">¿Existe diferencia significativa (p &lt; 0.05) entre los grupos?</h4>
+            <div id="challenge-options" class="mt-4 flex items-center justify-center gap-3">
+              <button onclick="checkChallenge(true)" class="px-6 py-2.5 rounded-xl text-sm font-bold bg-green-600 hover:bg-green-700 text-white transition shadow-sm">✅ Sí, hay diferencia</button>
+              <button onclick="checkChallenge(false)" class="px-6 py-2.5 rounded-xl text-sm font-bold bg-zinc-200 dark:bg-[#21262D] dark:hover:bg-[#30363D] text-zinc-800 dark:text-gray-200 transition shadow-sm">❌ No hay diferencia</button>
+            </div>
+            <div id="challenge-feedback" class="mt-4 min-h-[24px] text-sm font-semibold transition-all duration-300"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ TAB MANUAL ============ -->
+    <div id="tab-manual" class="hidden space-y-8 max-w-4xl mx-auto py-4">
+      <div class="border-b border-zinc-200 dark:border-[#2D333D] pb-6">
+        <h2 class="text-2xl font-semibold text-zinc-900 dark:text-white">Manual de Inferencia Visual</h2>
+        <p class="text-zinc-500 dark:text-gray-400 mt-2 text-sm">Aprende a interpretar barras de error en gráficos de grupos: las 3 reglas de solapamiento de Geoff Cumming y errores a evitar.</p>
+      </div>
+
+      <section>
+        <h3 class="text-lg font-bold text-zinc-900 dark:text-white mb-3">¿Qué son las barras de error?</h3>
+        <p class="text-sm text-zinc-700 dark:text-gray-300 leading-relaxed">
+          Una barra de error indica la incertidumbre alrededor de la media de un grupo. Su longitud puede representar el
+          <strong>error estándar (SE)</strong>, la <strong>desviación estándar (SD)</strong> o el <strong>intervalo de confianza al 95% (IC)</strong>.
+          Elegir una u otra cambia por completo la interpretación: <em>las barras SE y SD describen la dispersión de los datos; las barras IC comunican la precisión de la estimación de la media</em>.
+        </p>
+        <p class="text-sm text-zinc-700 dark:text-gray-300 leading-relaxed mt-2">
+          InferStat usa las reglas visuales propuestas por Geoff Cumming para decidir, a partir del solapamiento de los IC al 95%, si dos medias difieren significativamente (p &lt; 0.05), sin necesidad de calcular el p-value.
+        </p>
+      </section>
+
+      <section>
+        <h3 class="text-lg font-bold text-zinc-900 dark:text-white mb-3">Las 3 reglas de solapamiento</h3>
+        <div class="bg-white dark:bg-[#161B22] border border-zinc-200 dark:border-[#30363D] rounded-2xl overflow-hidden shadow-sm">
+          <img src="assets/inference_rules_diagram.png" alt="Diagrama de reglas de solapamiento de IC" class="w-full object-contain border-b border-zinc-200 dark:border-[#30363D]">
+          <div class="p-5 space-y-3 text-sm text-zinc-700 dark:text-gray-300">
+            <p><strong class="text-zinc-900 dark:text-white">1. Separación total → p &lt; 0.01.</strong> Si los IC no se tocan, la evidencia de una diferencia real es muy fuerte.</p>
+            <p><strong class="text-zinc-900 dark:text-white">2. Solapamiento menor a la mitad de un brazo → p &lt; 0.05.</strong> Si las barras se cruzan menos de la mitad de la distancia media-límite, aún hay evidencia moderada de diferencia.</p>
+            <p><strong class="text-zinc-900 dark:text-white">3. Solapamiento mayor a la mitad de un brazo → no significativo.</strong> Si las barras se cruzan más allá de la mitad de sus brazos, la diferencia probablemente se debe al azar.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h3 class="text-lg font-bold text-zinc-900 dark:text-white mb-3">Guía rápida de interpretación</h3>
+        <div class="bg-white dark:bg-[#161B22] border border-zinc-200 dark:border-[#30363D] rounded-2xl overflow-hidden shadow-sm">
+          <img src="assets/visual_inference_infographic.png" alt="Infografía de reglas de inferencia visual" class="w-full object-contain border-b border-zinc-200 dark:border-[#30363D]">
+          <div class="p-5 text-sm text-zinc-700 dark:text-gray-300">
+            <ul class="list-disc pl-5 space-y-1.5">
+              <li>Compara <strong>mismo tipo de barras</strong> entre grupos; nunca barras IC contra barras SE.</li>
+              <li>Con <strong>n pequeños</strong> (n ≤ 10) los IC son muy anchos: la ausencia de significancia puede deberse a falta de potencia.</li>
+              <li>Las <strong>letras de agrupación (CLD)</strong>: grupos que comparten una letra <em>no</em> difieren significativamente; grupos sin letras en común <em>sí</em> difieren.</li>
+              <li>Ante <strong>varianzas heterogéneas</strong>, el solapamiento visual puede ser engañoso; interpreta con cautela.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h3 class="text-lg font-bold text-zinc-900 dark:text-white mb-3">¿Cómo usar InferStat?</h3>
+        <div class="bg-white dark:bg-[#161B22] border border-zinc-200 dark:border-[#30363D] rounded-xl p-5 shadow-sm space-y-3 text-sm text-zinc-700 dark:text-gray-300">
+          <p><strong class="text-zinc-900 dark:text-white">Modo Libre:</strong> define de 2 a 5 grupos y ajusta la media (M), desviación estándar (SD) y tamaño muestral (n) de cada uno. Elige el tipo de barras y observa el gráfico. Activa las letras de agrupación para ver qué grupos difieren. Exporta escenarios en JSON para reutilizarlos en clase.</p>
+          <p><strong class="text-zinc-900 dark:text-white">Modo Desafío:</strong> se generan dos grupos aleatorios y debes decidir, solo con el ojo clínico, si su diferencia es significativa. Recibes retroalimentación inmediata tipo «Sí/No correcto», ideal para entrenar la intuición estadística.</p>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ TAB CHAT ============ -->
+    <div id="tab-chat" class="hidden space-y-6 max-w-4xl mx-auto py-4">
+      <div class="border-b border-zinc-200 dark:border-[#2D333D] pb-6">
+        <h2 class="text-2xl font-semibold text-zinc-900 dark:text-white flex items-center gap-2">
+          <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+          Asistente Científico IA
+        </h2>
+        <p class="text-zinc-500 dark:text-gray-400 mt-2 text-sm">Consulta al asistente InferStat sobre barras de error, intervalos de confianza, reglas de Cumming e inferencia visual.</p>
+      </div>
+
+      <div id="chat-messages" class="bg-white dark:bg-[#161B22] border border-zinc-200 dark:border-[#30363D] rounded-xl p-4 h-80 overflow-y-auto space-y-4">
+        <div class="chat-bubble-model p-3 text-xs chat-fade-in">
+          <p class="font-semibold mb-1">InferStat IA</p>
+          <p>¡Hola! Soy el asistente de InferStat. Puedo ayudarte con:</p>
+          <ul class="list-disc pl-4 mt-1 space-y-0.5">
+            <li>Interpretación de barras de error (SE, SD, IC 95%)</li>
+            <li>Las 3 reglas de solapamiento de Geoff Cumming</li>
+            <li>Diferencia entre significancia estadística y relevancia práctica</li>
+            <li>Errores comunes al graficar e interpretar intervalos</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap gap-2" id="preset-questions">
+        <button class="chip" onclick="sendPreset('¿Qué significan las barras IC al 95% y por qué son anchas con muestras pequeñas?')">¿Qué significan las barras IC 95%?</button>
+        <button class="chip" onclick="sendPreset('Explica las 3 reglas de solapamiento de Cumming para decidir si hay diferencia significativa.')">Reglas de solapamiento de Cumming</button>
+        <button class="chip" onclick="sendPreset('¿Por qué no se deben mezclar barras SE con barras IC al comparar grupos?')">¿MEZCLAR SE con IC?</button>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <input id="chat-input" type="text" placeholder="Escribe tu pregunta sobre inferencia visual..." onkeydown="if(event.key==='Enter')sendMessage()" class="flex-1 bg-white dark:bg-[#0D1117] border border-zinc-200 dark:border-[#30363D] rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-zinc-900 dark:text-white">
+        <button onclick="sendMessage()" class="px-5 py-3 rounded-xl text-sm font-bold bg-blue-600 hover:bg-blue-700 text-white transition shadow-sm">Enviar</button>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="max-w-7xl mx-auto px-4 text-center text-xs text-zinc-500 dark:text-gray-500 py-10">
+    🔬 InferStat — Simulador de Inferencia Estadística · Basado en el Laboratorio GEMS
+    <br>2026 Rolando Gelabert Fernández — Universidad Autónoma del Carmen
+  </footer>
+
+  <!-- Chart.js v4 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <script>
+    // ============================================================
+    // InferStat — Motor de Inferencia Visual
+    // Base: GEMS (ESDEPED 2025/OVA) · Formato: stat-ova-format
+    // ============================================================
+
+    const GROUP_COLORS = ['#6366f1', '#a855f7', '#22d3ee', '#10b981', '#f59e0b'];
+    const ERROR_META = {
+      se:  { label: 'Error Estándar (SE)',      color: '#22d3ee' },
+      ci:  { label: 'Intervalo de Confianza (95% CI)', color: '#f472b6' },
+      sd:  { label: 'Desviación Estándar (SD)', color: '#94a3b8' },
+      both:{ label: 'Ambos (SE + IC)',           color: '#f472b6' }
+    };
+
+    let chart = null;
+    let challengeChart = null;
+    let currentChallengeData = null;
+    let mode = 'libre';
+
+    // ---------- Pestañas y tema ----------
+    const ACTIVE_TAB = 'px-3.5 py-1.5 rounded-md font-semibold bg-white dark:bg-[#30363D] text-zinc-900 dark:text-white shadow-sm transition cursor-pointer';
+    const INACTIVE_TAB = 'px-3.5 py-1.5 rounded-md font-semibold text-zinc-500 dark:text-gray-400 hover:text-zinc-900 dark:hover:text-white transition cursor-pointer';
+
+    function switchTab(tabId) {
+      ['analisis', 'manual', 'chat'].forEach(t => {
+        document.getElementById('tab-' + t).classList.toggle('hidden', t !== tabId);
+        document.getElementById('tab-' + t + '-btn').className = t === tabId ? ACTIVE_TAB : INACTIVE_TAB;
+      });
+    }
+
+    function toggleDarkMode() {
+      document.documentElement.classList.toggle('dark');
+      if (chart) updateChart();
+      if (challengeChart && currentChallengeData) renderChallengeChart();
+    }
+
+    // ---------- Modo Libre / Desafío ----------
+    const ACTIVE_MODE = 'px-3.5 py-1.5 rounded-md bg-white dark:bg-[#30363D] text-zinc-900 dark:text-white shadow-sm transition cursor-pointer';
+    const INACTIVE_MODE = 'px-3.5 py-1.5 rounded-md text-zinc-500 dark:text-gray-400 hover:text-zinc-900 dark:hover:text-white transition cursor-pointer';
+
+    function setMode(m) {
+      mode = m;
+      document.getElementById('view-libre').classList.toggle('hidden', m !== 'libre');
+      document.getElementById('view-desafio').classList.toggle('hidden', m !== 'desafio');
+      document.getElementById('mode-libre-btn').className = m === 'libre' ? ACTIVE_MODE : INACTIVE_MODE;
+      document.getElementById('mode-desafio-btn').className = m === 'desafio' ? ACTIVE_MODE : INACTIVE_MODE;
+      if (m === 'desafio') generateChallengeData();
+      else if (chart) updateChart();
+    }
+
+    // ---------- Generación de inputs por grupo ----------
+    function generateInputs() {
+      const countInput = document.getElementById('num-groups');
+      const count = Math.min(5, Math.max(2, parseInt(countInput.value) || 2));
+      const container = document.getElementById('groups-inputs-container');
+      let html = '';
+      for (let i = 1; i <= count; i++) {
+        html += `
+        <div class="bg-white dark:bg-[#161B22] border border-zinc-200 dark:border-[#30363D] rounded-xl p-4 shadow-sm">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="w-3 h-3 rounded-full" style="background:${GROUP_COLORS[(i - 1) % GROUP_COLORS.length]}"></span>
+            <span class="text-xs font-bold text-zinc-900 dark:text-white">Grupo ${i}</span>
+            <span id="group-letter-${i}" class="ml-auto text-lg font-mono font-bold" style="color:${GROUP_COLORS[(i - 1) % GROUP_COLORS.length]}"></span>
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label class="block text-[10px] font-semibold text-zinc-500 dark:text-gray-400 mb-1">Media (M)</label>
+              <input type="number" step="any" id="m${i}" value="${i === 1 ? 40 : i === 2 ? 57 : i === 3 ? 48 : 48 + (i - 3) * 4}" oninput="updateChart()" class="stat-input">
+            </div>
+            <div>
+              <label class="block text-[10px] font-semibold text-zinc-500 dark:text-gray-400 mb-1">Desv. Est. (SD)</label>
+              <input type="number" step="any" id="sd${i}" value="${i === 3 ? 16 : 8}" oninput="updateChart()" class="stat-input">
+            </div>
+            <div>
+              <label class="block text-[10px] font-semibold text-zinc-500 dark:text-gray-400 mb-1">Muestra (n)</label>
+              <input type="number" step="1" id="n${i}" value="30" min="1" oninput="updateChart()" class="stat-input">
+            </div>
+          </div>
+        </div>`;
+      }
+      container.innerHTML = html;
+      updateChart();
+    }
+
+    // ---------- Estadísticas por grupo ----------
+    function getStatsFromDOM(i) {
+      const elM = document.getElementById('m' + i);
+      const elSD = document.getElementById('sd' + i);
+      const elN = document.getElementById('n' + i);
+      if (!elM || !elSD || !elN) return null;
+      const m = parseFloat(elM.value);
+      const sd = parseFloat(elSD.value);
+      const n = Math.max(1, parseInt(elN.value) || 1);
+      if (isNaN(m) || isNaN(sd)) return null;
+      const se = sd / Math.sqrt(n);
+      const t = n <= 3 ? 4.3 : (n < 10 ? 2.3 : 2);
+      const ci = t * se;
+      return { m, sd, n, se, ci, x: i };
+    }
+
+    // ---------- Reglas de Geoff Cumming ----------
+    function checkSignificance(s1, s2) {
+      const mDiff = Math.abs(s1.m - s2.m);
+      const arm = (s1.ci + s2.ci) / 2;
+      const halfArm = arm / 2;
+      const overlap = (s1.ci + s2.ci) - mDiff;
+
+      let pValue = 'p > 0.05';
+      let pedagogical = '<strong class="text-zinc-900 dark:text-white">Solapamiento significativo:</strong> las barras se cruzan más allá de la mitad de sus brazos. Es poco probable que la diferencia sea real.';
+      let isSignificant = false;
+
+      if (overlap <= 0) {
+        pValue = 'p < 0.01';
+        isSignificant = true;
+        pedagogical = '<strong class="text-green-600 dark:text-green-400">Separación total:</strong> los IC no se solapan. Evidencia muy fuerte de una diferencia real (p &lt; 0.01).';
+      } else if (overlap < halfArm) {
+        pValue = 'p < 0.05';
+        isSignificant = true;
+        pedagogical = '<strong class="text-green-600 dark:text-green-400">Solapamiento ligero:</strong> el solapamiento es menor a la mitad de un brazo del IC. Evidencia moderada de diferencia (p &lt; 0.05).';
+      }
+      return { pValue, isSignificant, pedagogical, overlap, arm, halfArm, mDiff };
+    }
+
+    // ---------- Chequeo de varianzas (Fmax) ----------
+    function checkVariances(groups) {
+      if (groups.length < 2) return null;
+      const variances = groups.map(g => g.sd * g.sd);
+      const fmax = Math.max(...variances) / Math.min(...variances);
+      return {
+        fmax,
+        significant: fmax > 3,
+        message: fmax > 6
+          ? '⚠️ Varianzas muy heterogéneas (Fmax &gt; 6). Las reglas de solapamiento pueden ser engañosas.'
+          : fmax > 3
+            ? '⚠️ Varianzas posiblemente heterogéneas (Fmax &gt; 3). Interpreta con cautela.'
+            : '✅ Varianzas razonablemente homogéneas (Fmax ≤ 3).'
+      };
+    }
+
+    // ---------- Letras de agrupación (CLD) vía Bron–Kerbosch ----------
+    function calculateGroupLetters(groups) {
+      const n = groups.length;
+      let adj = Array.from({ length: n }, () => []);
+      for (let i = 0; i < n; i++) {
+        for (let j = i + 1; j < n; j++) {
+          if (!checkSignificance(groups[i], groups[j]).isSignificant) {
+            adj[i].push(j); adj[j].push(i);
+          }
+        }
+      }
+      let cliques = [];
+      function bronKerbosch(R, P, X) {
+        if (P.length === 0 && X.length === 0) { cliques.push([...R].sort()); return; }
+        let pivot = P.concat(X)[0] ?? 0;
+        let candidates = P.filter(v => !adj[pivot].includes(v));
+        for (const v of candidates) {
+          bronKerbosch(R.concat(v), P.filter(u => adj[v].includes(u)), X.filter(u => adj[v].includes(u)));
+          P = P.filter(u => u !== v);
+          X = X.concat(v);
+        }
+      }
+      bronKerbosch([], [...Array(n).keys()], []);
+      // Ordena: cliques más grandes primero, luego por índice menor
+      const scored = cliques.sort((a, b) => b.length - a.length || a[0] - b[0]);
+      const letters = Array.from({ length: n }, () => '');
+      let letterIdx = 0;
+      for (const clique of scored) {
+        let ch = null;
+        for (const v of clique) { if (letters[v]) { ch = letters[v][0]; break; } }
+        if (!ch) ch = String.fromCharCode(97 + letterIdx++);
+        for (const v of clique) letters[v] += ch;
+      }
+      // Grupos aislados (difieren de todos) reciben letra propia vía cliques singleton
+      return letters.map(s => [...new Set(s.split(''))].sort().join(''));
+    }
+
+    // ---------- Gráfico principal con barras de error ----------
+    function themeColors() {
+      const dark = document.documentElement.classList.contains('dark');
+      return {
+        grid: dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+        tick: dark ? '#94a3b8' : '#71717a',
+        border: dark ? '#30363D' : '#e4e4e7'
+      };
+    }
+
+    function updateChart() {
+      try {
+        const canvas = document.getElementById('mainChart');
+        if (!canvas) return;
+        const ctxC = canvas.getContext('2d');
+        if (chart) chart.destroy();
+
+        const numGroups = parseInt(document.getElementById('num-groups').value) || 2;
+        const errorType = document.getElementById('error-type').value;
+        const showLetters = document.getElementById('show-letters').checked;
+        const th = themeColors();
+
+        let groupsData = [];
+        let yVals = [];
+        for (let i = 1; i <= numGroups; i++) {
+          const stats = getStatsFromDOM(i);
+          if (stats) { groupsData.push(stats); yVals.push(stats.m, stats.m + stats.sd, stats.m - stats.sd, stats.m + stats.ci, stats.m - stats.ci); }
+        }
+        if (!groupsData.length) return;
+
+        const yMin = Math.min(...yVals), yMax = Math.max(...yVals);
+        const range = yMax - yMin;
+        const buffer = range * 0.25 || 1;
+        const dataPoints = groupsData.map(g => ({ x: g.x, y: g.m }));
+        const letters = showLetters ? calculateGroupLetters(groupsData) : [];
+        groupsData.forEach((g, idx) => {
+          const span = document.getElementById('group-letter-' + g.x);
+          if (span) span.textContent = showLetters ? (letters[g.x - 1] || '') : '';
+        });
+
+        chart = new Chart(ctxC, {
+          type: 'scatter',
+          data: { datasets: [{ data: dataPoints, backgroundColor: groupsData.map((_, i) => GROUP_COLORS[i % GROUP_COLORS.length]), borderColor: '#ffffff', borderWidth: 1.5, pointRadius: 8 }] },
+          options: {
+            maintainAspectRatio: false,
+            animation: false,
+            responsive: true,
+            scales: {
+              x: { min: 0, max: numGroups + 1, grid: { display: false }, ticks: { display: false } },
+              y: {
+                min: yMin - buffer, max: yMax + buffer,
+                grid: { color: th.grid },
+                ticks: { color: th.tick, font: { size: 11, family: 'Inter' }, stepSize: range > 20 ? 5 : (range > 5 ? 1 : 0.5), callback: v => Math.round(v * 100) / 100 }
+              }
+            },
+            plugins: { legend: { display: false } }
+          },
+          plugins: [{
+            id: 'inferErrorBars',
+            afterDraw: (chartInstance) => {
+              const meta = chartInstance.getDatasetMeta(0);
+              if (!meta || !meta.data.length) return;
+              const ctxP = chartInstance.ctx;
+              const yScale = chartInstance.scales.y;
+              ctxP.save();
+              groupsData.forEach((g, idx) => {
+                const pt = meta.data[idx];
+                if (!pt) return;
+                const color = GROUP_COLORS[idx % GROUP_COLORS.length];
+                const drawBar = (val, width, dash, barColor) => {
+                  const top = yScale.getPixelForValue(g.m + val);
+                  const bottom = yScale.getPixelForValue(g.m - val);
+                  ctxP.beginPath();
+                  ctxP.setLineDash(dash || []);
+                  ctxP.strokeStyle = barColor && barColor !== color ? barColor : color;
+                  ctxP.lineWidth = width;
+                  ctxP.moveTo(pt.x, top); ctxP.lineTo(pt.x, bottom);
+                  ctxP.moveTo(pt.x - 10, top); ctxP.lineTo(pt.x + 10, top);
+                  ctxP.moveTo(pt.x - 10, bottom); ctxP.lineTo(pt.x + 10, bottom);
+                  ctxP.stroke();
+                  ctxP.setLineDash([]);
+                };
+                if (errorType === 'se' || errorType === 'both') drawBar(g.se, 4, null, '#22d3ee');
+                if (errorType === 'ci' || errorType === 'both') drawBar(g.ci, 2.5, errorType === 'both' ? [6, 4] : null, '#f472b6');
+                if (errorType === 'sd') drawBar(g.sd, 1.5, null, '#94a3b8');
+                if (showLetters && letters[idx]) {
+                  ctxP.font = '700 15px Inter, sans-serif';
+                  ctxP.fillStyle = color;
+                  ctxP.textAlign = 'center';
+                  ctxP.fillText(letters[idx], pt.x, yScale.getPixelForValue(g.m + (errorType === 'sd' ? g.sd : g.ci)) - 14);
+                }
+              });
+              ctxP.restore();
+            }
+          }]
+        });
+
+        // Leyenda según tipo de barra
+        const legendEl = document.getElementById('chart-legend');
+        const metaEl = ERROR_META[errorType] || ERROR_META.ci;
+        legendEl.innerHTML = `
+          <span class="flex items-center gap-1.5"><span class="w-3 h-1 rounded" style="background:${metaEl.color}"></span>${metaEl.label}</span>
+          ${errorType === 'both' ? '<span class="flex items-center gap-1.5"><span class="w-3 h-1 rounded" style="background:#22d3ee"></span>SE</span>' : ''}`;
+
+        interpretSimulator(groupsData);
+      } catch (err) {
+        console.error('Error en updateChart:', err);
+      }
+    }
+
+    // ---------- Asistente Pedagógico ----------
+    function interpretSimulator(groups) {
+      const interpEl = document.getElementById('interpretation');
+      const warningEl = document.getElementById('small-n-warning');
+      const hasSmallN = groups.some(g => g.n <= 3);
+      if (warningEl) warningEl.classList.toggle('hidden', !hasSmallN);
+
+      if (groups.length < 2) {
+        interpEl.innerHTML = '<div class="text-xs text-zinc-500 dark:text-gray-400">💡 Selecciona al menos dos grupos para iniciar el análisis.</div>';
+        return;
+      }
+
+      let html = '';
+      for (let i = 0; i < groups.length - 1; i++) {
+        const sig = checkSignificance(groups[i], groups[i + 1]);
+        html += `
+        <div class="px-3 py-2.5 rounded-lg bg-zinc-50 dark:bg-[#0D1117] border border-zinc-200 dark:border-[#30363D] border-l-4 ${sig.isSignificant ? 'border-l-green-500' : 'border-l-zinc-300 dark:border-l-zinc-600'}">
+          <div class="font-bold mb-0.5">G${groups[i].x} vs G${groups[i + 1].x} · <span class="font-mono text-[10px]">${sig.pValue}</span></div>
+          <div class="leading-relaxed">${sig.pedagogical}</div>
+        </div>`;
+      }
+
+      const homoCheck = document.getElementById('check-homoscedasticity');
+      if (homoCheck && homoCheck.checked) {
+        const varRes = checkVariances(groups);
+        if (varRes) {
+          html += `<div class="px-3 py-2.5 rounded-lg bg-zinc-50 dark:bg-[#0D1117] border border-zinc-200 dark:border-[#30363D] border-l-4 ${varRes.significant ? 'border-l-amber-500' : 'border-l-green-500'}"><span class="font-mono text-[10px]">Fmax = ${varRes.fmax.toFixed(2)}</span> · ${varRes.message}</div>`;
+        }
+      }
+
+      interpEl.innerHTML = html || '<div class="text-xs text-zinc-500 dark:text-gray-400">Ajusta los controles para ver el análisis.</div>';
+    }
+
+    // ---------- Exportar / Importar escenarios JSON ----------
+    function exportJSON() {
+      const numGroups = parseInt(document.getElementById('num-groups').value);
+      const data = { config: { version: '3.0.0', numGroups, errorType: document.getElementById('error-type').value }, groups: [] };
+      for (let i = 1; i <= numGroups; i++) {
+        const s = getStatsFromDOM(i);
+        if (s) data.groups.push({ m: s.m, sd: s.sd, n: s.n });
+      }
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'inferstat_escenario.json'; a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target.result);
+          // Nuevo formato {config:{numGroups,errorType},groups:[{m,sd,n}]}
+          let numGroups = data.config?.numGroups || data.groupCount || 2;
+          let errorType = data.config?.errorType || 'ci';
+          let groups = data.groups || [];
+          // Compatibilidad viejo formato {version, groupCount, errorType, groups:[{mean,sd,n}]}
+          if (!data.config && data.groups && data.groups[0] && 'mean' in data.groups[0]) {
+            groups = data.groups.map(g => ({ m: g.mean, sd: g.sd, n: g.n }));
+          }
+          if (!data.config && data.errorType === '95% CI') errorType = 'ci';
+          document.getElementById('num-groups').value = Math.min(5, Math.max(2, numGroups));
+          document.getElementById('error-type').value = ['se', 'ci', 'sd', 'both'].includes(errorType) ? errorType : 'ci';
+          generateInputs();
+          setTimeout(() => {
+            groups.forEach((g, idx) => {
+              const i = idx + 1;
+              const elM = document.getElementById('m' + i);
+              if (elM) { elM.value = g.m; document.getElementById('sd' + i).value = g.sd; document.getElementById('n' + i).value = g.n; }
+            });
+            updateChart();
+          }, 0);
+        } catch (err) {
+          alert('No se pudo leer el escenario JSON: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    // ---------- Presets de demostración ----------
+    const PRESETS = {
+      clara: { count: 2, groups: [{ m: 40, sd: 8, n: 30 }, { m: 70, sd: 8, n: 30 }], errorType: 'ci' },
+      ninguna: { count: 2, groups: [{ m: 50, sd: 8, n: 30 }, { m: 52, sd: 8, n: 30 }], errorType: 'ci' },
+      marginal: { count: 2, groups: [{ m: 50, sd: 8, n: 12 }, { m: 57, sd: 8, n: 12 }], errorType: 'ci' },
+      transitiva: { count: 3, groups: [{ m: 40, sd: 10, n: 30 }, { m: 57, sd: 10, n: 30 }, { m: 48, sd: 10, n: 30 }], errorType: 'ci' }
+    };
+
+    function loadPreset(key) {
+      const p = PRESETS[key];
+      if (!p) return;
+      document.getElementById('num-groups').value = p.count;
+      document.getElementById('error-type').value = p.errorType;
+      generateInputs();
+      setTimeout(() => {
+        p.groups.forEach((g, idx) => {
+          const i = idx + 1;
+          document.getElementById('m' + i).value = g.m;
+          document.getElementById('sd' + i).value = g.sd;
+          document.getElementById('n' + i).value = g.n;
+        });
+        updateChart();
+      }, 0);
+    }
+
+    // ============================================================
+    // MODO DESAFÍO
+    // ============================================================
+    function generateChallengeData() {
+      const fb = document.getElementById('challenge-feedback');
+      if (fb) { fb.textContent = ''; }
+
+      let m1, m2, sd1, sd2, n1, n2, sig;
+      // Garantiza una mezcla de retos significativos y no significativos
+      do {
+        m1 = 5 + Math.random() * 25; sd1 = 1 + Math.random() * 5; n1 = Math.floor(4 + Math.random() * 40);
+        m2 = 5 + Math.random() * 25; sd2 = 1 + Math.random() * 5; n2 = Math.floor(4 + Math.random() * 40);
+        const stats = (m, sd, n) => { const se = sd / Math.sqrt(n); const t = n <= 3 ? 4.3 : (n < 10 ? 2.3 : 2); return { m, sd, n, se, ci: t * se }; };
+        sig = checkSignificance(stats(m1, sd1, n1), stats(m2, sd2, n2));
+      } while (Math.abs((sig.isSignificant ? 1 : 0) - (Math.random() * 0.3)) > 0.4);
+
+      const g1 = (() => { const se = sd1 / Math.sqrt(n1); const t = n1 <= 3 ? 4.3 : (n1 < 10 ? 2.3 : 2); return { m: m1, sd: sd1, n: n1, se, ci: t * se, x: 1 }; })();
+      const g2 = (() => { const se = sd2 / Math.sqrt(n2); const t = n2 <= 3 ? 4.3 : (n2 < 10 ? 2.3 : 2); return { m: m2, sd: sd2, n: n2, se, ci: t * se, x: 2 }; })();
+
+      currentChallengeData = { g1, g2, isSignificant: sig.isSignificant };
+      renderChallengeChart();
+      renderChallengeVariances();
+    }
+
+    function renderChallengeVariances() {
+      const resultEl = document.getElementById('challenge-homo-result');
+      const chk = document.getElementById('chk-challenge-homo');
+      if (!resultEl) return;
+      if (!chk || !chk.checked || !currentChallengeData) { resultEl.innerHTML = ''; return; }
+      const varRes = checkVariances([currentChallengeData.g1, currentChallengeData.g2]);
+      resultEl.innerHTML = `<div class="px-3 py-2 rounded-lg bg-zinc-50 dark:bg-[#0D1117] border border-zinc-200 dark:border-[#30363D] text-xs">${varRes.message} <span class="font-mono">(Fmax = ${varRes.fmax.toFixed(2)})</span></div>`;
+    }
+
+    function renderChallengeChart() {
+      const canvas = document.getElementById('challengeChart');
+      if (!canvas || !currentChallengeData) return;
+      if (challengeChart) challengeChart.destroy();
+      const ctxC = canvas.getContext('2d');
+      const th = themeColors();
+      const { g1, g2 } = currentChallengeData;
+
+      const yVals = [g1.m, g1.m + g1.ci, g1.m - g1.ci, g2.m, g2.m + g2.ci, g2.m - g2.ci];
+      const yMin = Math.min(...yVals), yMax = Math.max(...yVals);
+      const range = yMax - yMin;
+      const buffer = range * 0.2 || 1;
+
+      challengeChart = new Chart(ctxC, {
+        type: 'scatter',
+        data: { datasets: [{ data: [{ x: 1, y: g1.m }, { x: 2, y: g2.m }], backgroundColor: ['#6366f1', '#a855f7'], borderColor: '#ffffff', borderWidth: 2, pointRadius: 10 }] },
+        options: {
+          maintainAspectRatio: false,
+          animation: false,
+          responsive: true,
+          scales: {
+            x: { min: 0, max: 3, grid: { display: false }, ticks: { display: false } },
+            y: { min: yMin - buffer, max: yMax + buffer, grid: { color: th.grid }, ticks: { color: th.tick, font: { size: 11, family: 'Inter' }, stepSize: range > 20 ? 5 : (range > 5 ? 1 : 0.5), callback: v => Math.round(v * 100) / 100 } }
+          },
+          plugins: { legend: { display: false } }
+        },
+        plugins: [{
+          id: 'challengeErrorBars',
+          afterDraw: (ci) => {
+            const yScale = ci.scales.y;
+            const meta = ci.getDatasetMeta(0);
+            ci.ctx.save();
+            [g1, g2].forEach((g, idx) => {
+              const pt = meta.data[idx];
+              if (!pt) return;
+              const top = yScale.getPixelForValue(g.m + g.ci);
+              const bottom = yScale.getPixelForValue(g.m - g.ci);
+              const color = idx === 0 ? '#6366f1' : '#a855f7';
+              ci.ctx.beginPath();
+              ci.ctx.setLineDash([]);
+              ci.ctx.strokeStyle = '#f472b6';
+              ci.ctx.lineWidth = 3;
+              ci.ctx.moveTo(pt.x, top); ci.ctx.lineTo(pt.x, bottom);
+              ci.ctx.moveTo(pt.x - 12, top); ci.ctx.lineTo(pt.x + 12, top);
+              ci.ctx.moveTo(pt.x - 12, bottom); ci.ctx.lineTo(pt.x + 12, bottom);
+              ci.ctx.stroke();
+              ci.ctx.font = '600 12px Inter, sans-serif';
+              ci.ctx.fillStyle = color;
+              ci.ctx.textAlign = 'center';
+              ci.ctx.fillText('G1', pt.x - 14, pt.y + 4);
+              ci.ctx.fillText('G2', pt.x + 14, pt.y + 4);
+            });
+            ci.ctx.restore();
+          }
+        }]
+      });
+    }
+
+    function checkChallenge(userSaidSignificant) {
+      if (!currentChallengeData) return;
+      const feedbackEl = document.getElementById('challenge-feedback');
+      const realSignificant = currentChallengeData.isSignificant;
+      const isCorrect = userSaidSignificant === realSignificant;
+
+      feedbackEl.innerHTML = isCorrect
+        ? `<span class="text-green-600 dark:text-green-400">✅ ¡Correcto!</span> La diferencia es <strong>${realSignificant ? 'sí' : 'no'}</strong> significativa (${realSignificant ? 'p < 0.05' : 'p > 0.05'}).`
+        : `<span class="text-red-500">❌ Incorrecto.</span> Los datos indican que la diferencia <strong>${realSignificant ? 'SÍ' : 'NO'}</strong> es significativa.`;
+      feedbackEl.classList.add('chat-fade-in');
+      setTimeout(() => feedbackEl.classList.remove('chat-fade-in'), 400);
+    }
+
+    // ============================================================
+    // CHAT IA (via proxy Vercel api/chat.ts)
+    // ============================================================
+    const CHAT_API_URL = 'https://inferstat.vercel.app/api/chat';
+
+    async function sendMessage() {
+      const inputEl = document.getElementById('chat-input');
+      const text = inputEl.value.trim();
+      if (!text) return;
+      inputEl.value = '';
+      appendChat('user', text);
+
+      const typing = appendChat('model', '⏳ Consultando al asistente...');
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 15000);
+      try {
+        const res = await fetch(CHAT_API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: [{ role: 'user', content: text }] }),
+          signal: controller.signal
+        });
+        const data = await res.json();
+        typing.querySelector('p:last-child').textContent = data.text || 'No obtuve respuesta.';
+      } catch (err) {
+        typing.querySelector('p:last-child').textContent = '⚠️ Chat no disponible en este despliegue. Intenta de nuevo más tarde.';
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    function sendPreset(text) {
+      document.getElementById('chat-input').value = text;
+      sendMessage();
+    }
+
+    function appendChat(role, text) {
+      const container = document.getElementById('chat-messages');
+      const div = document.createElement('div');
+      div.className = role === 'user' ? 'chat-bubble-user p-3 text-xs chat-fade-in ml-auto' : 'chat-bubble-model p-3 text-xs chat-fade-in';
+      div.innerHTML = role === 'user'
+        ? `<p>${text}</p>`
+        : `<p class="font-semibold mb-1">InferStat IA</p><p>${text}</p>`;
+      container.appendChild(div);
+      container.scrollTop = container.scrollHeight;
+      return div;
+    }
+
+    // ---------- Init ----------
+    generateInputs();
+  </script>
+</body>
+</html>

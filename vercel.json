@@ -1,0 +1,7 @@
+{
+  "buildCommand": "mkdir -p dist && cp InferStat-Evaluador-Inferencia.html dist/index.html",
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ]
+}

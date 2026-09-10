@@ -34,3 +34,8 @@ Reconstruir el OVA **GEMS** (inferencia con barras de error) como **InferStat**,
 - `GEMINI_API_KEY` configurada como env var de producción en el proyecto Vercel `inferstat`.
 - Vercel autenticado como `rgelabertf-5243` (token renovado en esta sesión).
 - La app era "liga pendiente" del indicador 3.1.1; ahora desplegada (1ª vez que se publica).
+
+## Arreglo posterior (misma sesión) — accesibilidad modo oscuro
+- **Bug:** en modo oscuro los valores de `num-groups` y M/SD/n no se veían.
+- **Causa:** `.stat-input { @apply ... }` (y `.chip`) → el **Tailwind Play CDN NO procesa `@apply` en `<style>` normal** → quedaban `{}` → inputs con default del navegador (texto casi blanco sobre blanco).
+- **Fix:** ambos selectores reescritos en CSS puro (con `.dark .x` y `color-scheme`). Verificado local y en vivo: blanco sobre `#0D1117`. Commit `c552472`.

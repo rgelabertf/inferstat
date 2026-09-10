@@ -24,7 +24,7 @@ const CORS = {
 
 export const config = { maxDuration: 30 };
 
-export default async function handler(req: Request) {
+export async function POST(request: Request) {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
   try {

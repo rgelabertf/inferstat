@@ -1,6 +1,6 @@
 {
   "name": "inferstat",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "InferStat — Evaluador de Inferencia Visual (OVA de estadística: barras de error y reglas de Cumming)",
   "type": "module",
   "license": "MIT",
@@ -10,5 +10,8 @@
   },
   "dependencies": {
     "@google/genai": "^0.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0"
   }
 }

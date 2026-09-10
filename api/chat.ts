@@ -22,6 +22,8 @@ const CORS = {
   "Content-Type": "application/json",
 };
 
+export const config = { maxDuration: 30 };
+
 export default async function handler(req: Request) {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
@@ -29,7 +31,7 @@ export default async function handler(req: Request) {
     const { messages } = await req.json();
     const lastMessage = messages?.at(-1)?.content || "Hola";
     const resp = await genai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.1-flash-lite",
       contents: [{ role: "user", parts: [{ text: lastMessage }] }],
       config: { systemInstruction: SYSTEM_INSTRUCTION },
     });

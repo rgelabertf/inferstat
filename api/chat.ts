@@ -25,10 +25,10 @@ const CORS = {
 export const config = { maxDuration: 30 };
 
 export async function POST(request: Request) {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+  if (request.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
   try {
-    const { messages } = await req.json();
+    const { messages } = await request.json();
     const lastMessage = messages?.at(-1)?.content || "Hola";
     const resp = await genai.models.generateContent({
       model: "gemini-3.1-flash-lite",

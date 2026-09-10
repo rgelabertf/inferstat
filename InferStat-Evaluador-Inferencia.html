@@ -41,8 +41,10 @@
     @keyframes chat-fade-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     .chat-fade-in { animation: chat-fade-in 0.25s ease-out; }
 
-    /* Número inputs compactos */
-    .stat-input { @apply w-full bg-zinc-50 dark:bg-[#0D1117] border border-zinc-200 dark:border-[#30363D] rounded-lg px-2 py-1.5 text-center text-xs font-mono font-semibold text-zinc-850 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 transition; }
+    /* Número inputs compactos (CSS puro: @apply no se procesa en <style> del Play CDN) */
+    .stat-input { width: 100%; background: #fafafa; border: 1px solid #e4e4e7; border-radius: 8px; padding: 6px 8px; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; color: #202024; outline: none; color-scheme: light; transition: border-color .2s, box-shadow .2s; }
+    .dark .stat-input { background: #0D1117; border-color: #30363D; color: #ffffff; color-scheme: dark; }
+    .stat-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 1px #3b82f6; }
 
     /* Charts */
     .chart-box { position: relative; height: 380px; }
@@ -57,7 +59,10 @@
     .switch input:checked + .slider { background: #2563eb; }
     .switch input:checked + .slider:before { transform: translateX(14px); }
 
-    .chip { @apply px-3 py-1.5 rounded-full text-xs font-semibold border border-zinc-200 dark:border-[#30363D] bg-white dark:bg-[#21262D] text-zinc-700 dark:text-gray-300 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer; }
+    .chip { padding: 6px 12px; border-radius: 9999px; font-size: 12px; font-weight: 600; border: 1px solid #e4e4e7; background: #ffffff; color: #3f3f46; transition: color .2s, border-color .2s; cursor: pointer; }
+    .dark .chip { background: #21262D; border-color: #30363D; color: #d1d5db; }
+    .chip:hover { border-color: #3b82f6; color: #2563eb; }
+    .dark .chip:hover { border-color: #3b82f6; color: #60a5fa; }
   </style>
 </head>
 <body class="bg-zinc-50 text-zinc-900 dark:bg-[#0F1115] dark:text-zinc-50 min-h-screen transition-colors duration-200">
